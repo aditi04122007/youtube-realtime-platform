@@ -1,0 +1,24 @@
+{
+  "name": "youtube-realtime-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-Ready Full-Stack Real-Time Video Platform",
+  "scripts": {
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "start:backend": "npm start --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+  },
+  "keywords": [
+    "video-platform",
+    "react",
+    "express",
+    "realtime",
+    "fullstack"
+  ],
+  "author": "",
+  "license": "ISC"
+}

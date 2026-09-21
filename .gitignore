@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+*/node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+*/.env
+*/.env.*
+!*/.env.example
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+frontend/dist/
+backend/dist/
+*/dist/
+
+# Uploads & Media Files (preserve directory structure via .gitkeep)
+backend/uploads/**
+!backend/uploads/
+!backend/uploads/**/
+!backend/uploads/**/.gitkeep
+
+# Temporary, scratch & experiment directories
+scratch/
+StreamTube/
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage & test caches
+coverage/
+.nyc_output/
