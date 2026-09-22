@@ -13,17 +13,29 @@ USE video_platform;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Drop tables in reverse dependency order for safe idempotent execution
-DROP TABLE IF EXISTS admin_actions;
-DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS call_shared_files;
+DROP TABLE IF EXISTS call_room_blocks;
+DROP TABLE IF EXISTS call_moderation_actions;
+DROP TABLE IF EXISTS call_message_reads;
 DROP TABLE IF EXISTS call_messages;
+DROP TABLE IF EXISTS call_room_participants;
 DROP TABLE IF EXISTS call_participants;
 DROP TABLE IF EXISTS call_rooms;
+DROP TABLE IF EXISTS video_calls;
+DROP TABLE IF EXISTS admin_actions;
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS comment_translations;
 DROP TABLE IF EXISTS download_history;
 DROP TABLE IF EXISTS downloads;
-DROP TABLE IF EXISTS video_access_rules;
+DROP TABLE IF EXISTS payment_webhooks;
+DROP TABLE IF EXISTS payment_transactions;
+DROP TABLE IF EXISTS payment_orders;
 DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS subscription_history;
 DROP TABLE IF EXISTS user_subscriptions;
 DROP TABLE IF EXISTS subscription_plans;
+DROP TABLE IF EXISTS video_access_rules;
+DROP TABLE IF EXISTS security_events;
 DROP TABLE IF EXISTS otp_codes;
 DROP TABLE IF EXISTS login_attempts;
 DROP TABLE IF EXISTS devices;
@@ -32,6 +44,7 @@ DROP TABLE IF EXISTS playlist_videos;
 DROP TABLE IF EXISTS playlists;
 DROP TABLE IF EXISTS watch_later;
 DROP TABLE IF EXISTS watch_history;
+DROP TABLE IF EXISTS search_history;
 DROP TABLE IF EXISTS channel_subscriptions;
 DROP TABLE IF EXISTS video_reactions;
 DROP TABLE IF EXISTS comment_likes;
@@ -45,7 +58,6 @@ DROP TABLE IF EXISTS channels;
 DROP TABLE IF EXISTS user_profiles;
 DROP TABLE IF EXISTS users;
 
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================================
 -- 1. USERS TABLE
@@ -537,29 +549,40 @@ CREATE TABLE otp_codes (
 
 
 -- =====================================================================
--- 21. SUBSCRIPTION PLANS TABLE
--- Monetization tiers (Free, Bronze, Silver, Gold)
+-- 21. SUBSCRIPTION PLANS TABLE (Phase 15)
+-- Tier configurations (FREE, BRONZE, SILVER, GOLD) with limits and pricing
 -- =====================================================================
 CREATE TABLE subscription_plans (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
   slug ENUM('FREE', 'BRONZE', 'SILVER', 'GOLD') NOT NULL,
+  code VARCHAR(20) NOT NULL,
   description TEXT DEFAULT NULL,
-  price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
+  monthly_price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
+  yearly_price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
+  max_video_uploads INT UNSIGNED NOT NULL DEFAULT 10,
+  max_storage_gb INT UNSIGNED NOT NULL DEFAULT 5,
+  max_playlists INT UNSIGNED NOT NULL DEFAULT 10,
+  download_limit INT UNSIGNED NOT NULL DEFAULT 0,
   duration_days INT UNSIGNED NOT NULL DEFAULT 30,
   max_downloads INT UNSIGNED NOT NULL DEFAULT 0,
   max_storage_mb INT UNSIGNED NOT NULL DEFAULT 0,
-  premium_access BOOLEAN NOT NULL DEFAULT FALSE,
+  premium_access TINYINT(1) NOT NULL DEFAULT 0,
+  priority_support TINYINT(1) NOT NULL DEFAULT 0,
+  status ENUM('ACTIVE', 'DISABLED', 'HIDDEN') NOT NULL DEFAULT 'ACTIVE',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  CONSTRAINT uq_sp_slug UNIQUE (slug)
+  CONSTRAINT uq_subscription_plans_slug UNIQUE (slug),
+  CONSTRAINT uq_subscription_plans_code UNIQUE (code),
+  INDEX idx_sub_plans_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =====================================================================
--- 22. USER SUBSCRIPTIONS TABLE
--- Active user plan subscriptions
+-- 22. USER SUBSCRIPTIONS TABLE (Phase 15)
+-- User active subscription memberships
 -- =====================================================================
 CREATE TABLE user_subscriptions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -567,26 +590,27 @@ CREATE TABLE user_subscriptions (
   plan_id INT UNSIGNED NOT NULL,
   status ENUM('ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING') NOT NULL DEFAULT 'PENDING',
   start_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  end_date TIMESTAMP NOT NULL,
-  auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
+  end_date TIMESTAMP NULL DEFAULT NULL,
+  auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+  billing_cycle ENUM('MONTHLY', 'YEARLY') NOT NULL DEFAULT 'MONTHLY',
+  payment_provider VARCHAR(50) NOT NULL DEFAULT 'DEMO',
+  payment_reference VARCHAR(255) DEFAULT NULL,
   razorpay_subscription_id VARCHAR(100) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  CONSTRAINT fk_us_user FOREIGN KEY (user_id)
-    REFERENCES users (id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT fk_us_plan FOREIGN KEY (plan_id)
-    REFERENCES subscription_plans (id)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
+  CONSTRAINT fk_user_sub_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_user_sub_plan FOREIGN KEY (plan_id)
+    REFERENCES subscription_plans (id) ON DELETE RESTRICT ON UPDATE CASCADE,
 
-  INDEX idx_us_user_id (user_id),
-  INDEX idx_us_plan_id (plan_id),
-  INDEX idx_us_status (status),
-  INDEX idx_us_end_date (end_date)
+  INDEX idx_user_subscriptions_user (user_id),
+  INDEX idx_user_subscriptions_plan (plan_id),
+  INDEX idx_user_subscriptions_status (status),
+  INDEX idx_user_subscriptions_user_status (user_id, status),
+  INDEX idx_user_sub_user_status_end (user_id, status, end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 
 -- =====================================================================
@@ -915,68 +939,7 @@ CREATE TABLE comment_translations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- =====================================================================
--- 33. SUBSCRIPTION PLANS TABLE (Phase 15)
--- Tier configurations (FREE, BRONZE, SILVER, GOLD) with limits and pricing
--- =====================================================================
-CREATE TABLE subscription_plans (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL,
-  slug ENUM('FREE', 'BRONZE', 'SILVER', 'GOLD') NOT NULL,
-  code VARCHAR(20) NOT NULL,
-  description TEXT DEFAULT NULL,
-  price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
-  monthly_price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
-  yearly_price DECIMAL(10,2) NOT NULL DEFAULT '0.00',
-  max_video_uploads INT UNSIGNED NOT NULL DEFAULT 10,
-  max_storage_gb INT UNSIGNED NOT NULL DEFAULT 5,
-  max_playlists INT UNSIGNED NOT NULL DEFAULT 10,
-  download_limit INT UNSIGNED NOT NULL DEFAULT 0,
-  duration_days INT UNSIGNED NOT NULL DEFAULT 30,
-  max_downloads INT UNSIGNED NOT NULL DEFAULT 0,
-  max_storage_mb INT UNSIGNED NOT NULL DEFAULT 0,
-  premium_access TINYINT(1) NOT NULL DEFAULT 0,
-  priority_support TINYINT(1) NOT NULL DEFAULT 0,
-  status ENUM('ACTIVE', 'DISABLED', 'HIDDEN') NOT NULL DEFAULT 'ACTIVE',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  CONSTRAINT uq_subscription_plans_slug UNIQUE (slug),
-  CONSTRAINT uq_subscription_plans_code UNIQUE (code),
-  INDEX idx_sub_plans_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- =====================================================================
--- 34. USER SUBSCRIPTIONS TABLE (Phase 15)
--- User active subscription memberships
--- =====================================================================
-CREATE TABLE user_subscriptions (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id BIGINT UNSIGNED NOT NULL,
-  plan_id INT UNSIGNED NOT NULL,
-  status ENUM('ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING') NOT NULL DEFAULT 'PENDING',
-  start_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  end_date TIMESTAMP NULL DEFAULT NULL,
-  auto_renew TINYINT(1) NOT NULL DEFAULT 0,
-  billing_cycle ENUM('MONTHLY', 'YEARLY') NOT NULL DEFAULT 'MONTHLY',
-  payment_provider VARCHAR(50) NOT NULL DEFAULT 'DEMO',
-  payment_reference VARCHAR(255) DEFAULT NULL,
-  razorpay_subscription_id VARCHAR(100) DEFAULT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  CONSTRAINT fk_user_sub_user FOREIGN KEY (user_id)
-    REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_user_sub_plan FOREIGN KEY (plan_id)
-    REFERENCES subscription_plans (id) ON DELETE RESTRICT ON UPDATE CASCADE,
-
-  INDEX idx_user_subscriptions_user (user_id),
-  INDEX idx_user_subscriptions_plan (plan_id),
-  INDEX idx_user_subscriptions_status (status),
-  INDEX idx_user_subscriptions_user_status (user_id, status),
-  INDEX idx_user_sub_user_status_end (user_id, status, end_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =====================================================================
@@ -1184,6 +1147,8 @@ CREATE TABLE IF NOT EXISTS call_shared_files (
   INDEX idx_call_files_room (room_id, created_at),
   INDEX fk_call_files_uploader (uploader_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 
 

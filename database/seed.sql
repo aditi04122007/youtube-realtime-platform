@@ -22,9 +22,10 @@ INSERT INTO video_categories (name, slug, description) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 
 -- 2. Populate Subscription Plans
-INSERT INTO subscription_plans (name, slug, description, price, duration_days, max_downloads, max_storage_mb, premium_access) VALUES
-  ('Free Plan', 'FREE', 'Default tier: Ad-supported streaming with basic playback', 0.00, 3650, 2, 500, FALSE),
-  ('Bronze Supporter', 'BRONZE', 'Entry tier: Ad-free playback, up to 10 offline downloads', 199.00, 30, 10, 2048, TRUE),
-  ('Silver Creator', 'SILVER', 'Mid tier: HD offline downloads, priority comments, 30 downloads', 499.00, 30, 30, 10240, TRUE),
-  ('Gold VIP', 'GOLD', 'Ultimate tier: 4K streaming, 100 offline downloads, group call access', 999.00, 30, 100, 51200, TRUE)
-ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), description = VALUES(description);
+INSERT INTO subscription_plans (name, slug, code, description, price, monthly_price, yearly_price, max_video_uploads, max_storage_gb, max_playlists, download_limit, duration_days, max_downloads, max_storage_mb, premium_access, priority_support, status) VALUES
+  ('Free Plan', 'FREE', 'FREE', 'Default tier: Ad-supported streaming with basic playback and standard storage', 0.00, 0.00, 0.00, 10, 5, 10, 0, 3650, 0, 500, FALSE, 0, 'ACTIVE'),
+  ('Bronze Supporter', 'BRONZE', 'BRONZE', 'Entry tier: Ad-free playback, 20 monthly offline downloads, and 50 GB storage', 199.00, 199.00, 1990.00, 100, 50, 50, 20, 30, 20, 2048, TRUE, 0, 'ACTIVE'),
+  ('Silver Creator', 'SILVER', 'SILVER', 'Mid tier: HD offline downloads, priority comments, 100 downloads, 250 GB storage', 499.00, 499.00, 4990.00, 500, 250, 100, 100, 30, 100, 10240, TRUE, 1, 'ACTIVE'),
+  ('Gold VIP', 'GOLD', 'GOLD', 'Ultimate tier: 4K streaming, unlimited offline downloads, group call access, priority support', 999.00, 999.00, 9990.00, 0, 0, 0, 0, 30, 0, 51200, TRUE, 1, 'ACTIVE')
+ON DUPLICATE KEY UPDATE name = VALUES(name), code = VALUES(code), price = VALUES(price), monthly_price = VALUES(monthly_price), yearly_price = VALUES(yearly_price), description = VALUES(description), download_limit = VALUES(download_limit), max_video_uploads = VALUES(max_video_uploads), max_storage_gb = VALUES(max_storage_gb), max_playlists = VALUES(max_playlists), status = VALUES(status);
+

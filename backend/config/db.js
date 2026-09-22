@@ -5,19 +5,37 @@ const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
-// MySQL 8+ connection pool configuration driven purely by environment variables
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'video_platform',
-  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
-  waitForConnections: true,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
-});
+// Build connection options supporting local MySQL and Cloud SSL (TiDB, Aiven, etc.)
+const isCloudDb =
+  process.env.DB_SSL === 'true' ||
+  (process.env.DB_HOST && (process.env.DB_HOST.includes('tidbcloud.com') || process.env.DB_HOST.includes('aivencloud.com')));
+
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      uri: process.env.DATABASE_URL,
+      connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
+      waitForConnections: true,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
+      ssl: isCloudDb ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT) || 3306,
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'video_platform',
+      connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
+      waitForConnections: true,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
+      ssl: isCloudDb ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
+    };
+
+const pool = mysql.createPool(poolConfig);
+
 
 /**
  * Startup database connection verification.

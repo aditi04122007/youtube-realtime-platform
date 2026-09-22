@@ -70,15 +70,37 @@ app.use(
 );
 
 // 2. Cross-Origin Resource Sharing (CORS)
+const allowedOrigins = [
+  config.clientUrl,
+  'http://localhost:5173',
+  'http://localhost:5000',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server health checks)
+      if (!origin) return callback(null, true);
+      
+      // Allow configured clientUrl, local dev, or any Vercel deployment preview/production
+      if (
+        config.clientUrl === '*' ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+      
+      // Return origin to allow with credentials
+      return callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Range', 'X-Requested-With'],
     exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'Content-Disposition'],
   })
 );
+
 
 // 3. HTTP Request Logging (Morgan)
 if (config.nodeEnv !== 'test') {

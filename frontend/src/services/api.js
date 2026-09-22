@@ -11,15 +11,22 @@ const api = axios.create({
   },
 });
 
-// Request Interceptor: Prepared for future JWT token attachment
+// Request Interceptor: Attach JWT token from localStorage if available
 api.interceptors.request.use(
   (config) => {
-    // Phase 3: const token = localStorage.getItem('token');
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {
+      // Ignore localStorage access issues
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
+
 
 // Response Interceptor: Unified error logging & handling
 api.interceptors.response.use(
@@ -81,6 +88,11 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   const response = await api.post('/auth/login', credentials);
+  if (response.data && response.data.token) {
+    try {
+      localStorage.setItem('token', response.data.token);
+    } catch (e) {}
+  }
   return response.data;
 };
 
@@ -89,6 +101,9 @@ export const loginUser = async (credentials) => {
  * POST /api/auth/logout
  */
 export const logoutUser = async () => {
+  try {
+    localStorage.removeItem('token');
+  } catch (e) {}
   const response = await api.post('/auth/logout');
   return response.data;
 };
@@ -262,6 +277,11 @@ export const uploadChannelBanner = async (formData) => {
  */
 export const verifyLoginOtp = async (data) => {
   const response = await api.post('/auth/verify-login-otp', data);
+  if (response.data && response.data.token) {
+    try {
+      localStorage.setItem('token', response.data.token);
+    } catch (e) {}
+  }
   return response.data;
 };
 
