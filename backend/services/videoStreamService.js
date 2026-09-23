@@ -55,9 +55,12 @@ class VideoStreamService {
         });
       }
 
-      const video = rows[0];
+      // 3. Handle external/hosted video URLs (e.g. CDN, Cloud Storage)
+      if (video.video_url && (video.video_url.startsWith('http://') || video.video_url.startsWith('https://'))) {
+        return res.redirect(video.video_url);
+      }
 
-      // 3. Resolve file path safely and verify existence
+      // 4. Resolve file path safely and verify existence for local uploads
       const filePath = storageService.getAbsolutePath(video.video_url);
       if (!filePath || !fs.existsSync(filePath)) {
         return res.status(404).json({

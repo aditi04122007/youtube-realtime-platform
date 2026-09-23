@@ -478,8 +478,9 @@ const getVideoById = async (req, res, next) => {
     formatted.access = accessDetails;
     formatted.is_premium = accessDetails.isPremium;
     formatted.minimum_plan_code = accessDetails.minimumPlanCode;
-    formatted.minimum_plan_name = accessDetails.minimumPlanName;
-    formatted.stream_url = accessDetails.canWatch ? `/api/videos/${videoId}/stream` : null;
+    formatted.stream_url = accessDetails.canWatch
+      ? (video.video_url && (video.video_url.startsWith('http://') || video.video_url.startsWith('https://')) ? video.video_url : `/api/videos/${videoId}/stream`)
+      : null;
 
     return res.status(200).json({
       success: true,
