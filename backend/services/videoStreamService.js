@@ -55,6 +55,8 @@ class VideoStreamService {
         });
       }
 
+      const video = rows[0];
+
       // 3. Handle external/hosted video URLs (e.g. CDN, Cloud Storage)
       if (video.video_url && (video.video_url.startsWith('http://') || video.video_url.startsWith('https://'))) {
         return res.redirect(video.video_url);
