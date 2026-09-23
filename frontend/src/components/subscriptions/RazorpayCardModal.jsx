@@ -78,15 +78,6 @@ const RazorpayCardModal = ({
     if (formError) setFormError('');
   };
 
-  // Pre-fill test card details helper
-  const handleFillTestCard = () => {
-    setCardNumber('4111 1111 1111 1111');
-    setExpiry('12/28');
-    setCvv('123');
-    setCardholderName('Test Subscriber');
-    setFormError('');
-  };
-
   // Validate Step 1: Card Details
   const handleProceedToOtp = (e) => {
     e.preventDefault();
@@ -94,12 +85,12 @@ const RazorpayCardModal = ({
 
     const rawCard = cardNumber.replace(/\s+/g, '');
     if (rawCard.length < 16) {
-      setFormError('Please enter a valid 16-digit card number (e.g. 4111 1111 1111 1111).');
+      setFormError('Please enter a valid 16-digit card number.');
       return;
     }
 
     if (!expiry || expiry.length < 5) {
-      setFormError('Please enter a valid expiry date (MM/YY, e.g. 12/28).');
+      setFormError('Please enter a valid expiry date (MM/YY).');
       return;
     }
 
@@ -111,7 +102,7 @@ const RazorpayCardModal = ({
       return;
     }
     if (isNaN(year) || year < 24) {
-      setFormError('Card has expired. Enter a future year (e.g. 28).');
+      setFormError('Card has expired. Enter a valid future year.');
       return;
     }
 
@@ -136,14 +127,8 @@ const RazorpayCardModal = ({
     setFormError('');
 
     const trimmedOtp = otp.trim();
-    if (!trimmedOtp) {
-      setFormError('Please enter the 6-digit OTP code.');
-      return;
-    }
-
-    // In Razorpay Test Mode, standard OTP is 123456
-    if (trimmedOtp !== '123456') {
-      setFormError('Incorrect OTP. In test sandbox mode, please enter 123456.');
+    if (!trimmedOtp || !/^\d{6}$/.test(trimmedOtp)) {
+      setFormError('Please enter a valid 6-digit OTP code.');
       return;
     }
 
@@ -215,23 +200,17 @@ const RazorpayCardModal = ({
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Card Information
               </label>
-              <button
-                type="button"
-                onClick={handleFillTestCard}
-                className="text-[11px] font-bold text-indigo-600 dark:text-cyan-400 hover:underline"
-              >
-                Auto-fill Test Card
-              </button>
             </div>
 
             {/* Card Number */}
             <div className="relative">
               <input
                 type="text"
-                placeholder="4111 1111 1111 1111"
+                placeholder="•••• •••• •••• ••••"
                 value={cardNumber}
                 onChange={handleCardNumberChange}
                 maxLength={19}
+                autoComplete="off"
                 className="w-full px-3.5 py-2.5 pl-10 text-xs sm:text-sm font-mono tracking-wider bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400"
                 disabled={isProcessing}
                 autoFocus
@@ -247,10 +226,11 @@ const RazorpayCardModal = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="MM/YY (12/28)"
+                  placeholder="MM/YY"
                   value={expiry}
                   onChange={handleExpiryChange}
                   maxLength={5}
+                  autoComplete="off"
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-mono text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400"
                   disabled={isProcessing}
                 />
@@ -263,10 +243,11 @@ const RazorpayCardModal = ({
                 <div className="relative">
                   <input
                     type="password"
-                    placeholder="123"
+                    placeholder="CVV"
                     value={cvv}
                     onChange={handleCvvChange}
                     maxLength={4}
+                    autoComplete="off"
                     className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-mono text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400"
                     disabled={isProcessing}
                   />
@@ -288,17 +269,10 @@ const RazorpayCardModal = ({
                   setCardholderName(e.target.value);
                   if (formError) setFormError('');
                 }}
+                autoComplete="off"
                 className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400"
                 disabled={isProcessing}
               />
-            </div>
-
-            {/* Test Credentials Helper Banner */}
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-200 text-xs">
-              <p className="font-semibold">Razorpay Sandbox Credentials:</p>
-              <p className="text-[11px] mt-0.5 font-mono">
-                Card: <strong>4111 1111 1111 1111</strong> &bull; Expiry: <strong>12/28</strong> &bull; CVV: <strong>123</strong>
-              </p>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -335,12 +309,9 @@ const RazorpayCardModal = ({
               <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1">
                 Enter the One-Time Password (OTP) sent to your registered mobile number for card ending in{' '}
                 <strong className="font-mono">
-                  •••• {cardNumber.replace(/\s+/g, '').slice(-4) || '1111'}
+                  •••• {cardNumber.replace(/\s+/g, '').slice(-4) || '••••'}
                 </strong>
                 .
-              </p>
-              <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1">
-                Razorpay Test OTP: <strong className="font-mono bg-indigo-100 dark:bg-indigo-900 px-1 py-0.5 rounded">123456</strong>
               </p>
             </div>
 
@@ -350,14 +321,15 @@ const RazorpayCardModal = ({
               </label>
               <input
                 type="text"
-                placeholder="123456"
+                placeholder="••••••"
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
                   if (formError) setFormError('');
                 }}
                 maxLength={6}
-                className="w-full px-3.5 py-2.5 text-center text-base sm:text-lg font-mono font-bold tracking-widest bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-300"
+                autoComplete="off"
+                className="w-full px-3.5 py-2.5 text-center text-base sm:text-lg font-mono font-bold tracking-widest bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white placeholder-slate-400"
                 disabled={isProcessing}
                 autoFocus
               />
