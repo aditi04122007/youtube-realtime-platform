@@ -455,9 +455,9 @@ const Watch = () => {
   }
 
   // 6. Success: Watch Experience Layout
-  const canWatch = video.access ? video.access.canWatch : true;
+  const rawStream = video.stream_url || video.video_url;
   const streamUrl = canWatch
-    ? (video.stream_url ? getMediaUrl(video.stream_url) : getVideoStreamUrl(video.id))
+    ? (rawStream ? getMediaUrl(rawStream) : getVideoStreamUrl(video.id))
     : null;
   const posterUrl = video.thumbnail_url ? getMediaUrl(video.thumbnail_url) : null;
 

@@ -117,11 +117,17 @@ const VideoPlayer = forwardRef(
     pause: () => videoRef.current?.pause(),
   }));
 
-  // Reset seek applied state when src changes
+  // Reset seek applied state and error status when src changes
   useEffect(() => {
     initialSeekAppliedRef.current = false;
     setShowAutoplayOverlay(false);
     setAutoplayCountdown(5);
+    setHasError(false);
+    setErrorMessage('');
+    setIsLoadingMetadata(true);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
   }, [src]);
 
   // Autoplay Countdown Timer Effect
@@ -633,7 +639,6 @@ const VideoPlayer = forwardRef(
         autoPlay={autoPlay}
         playsInline
         preload="metadata"
-        crossOrigin="use-credentials"
         controls={false}
         onClick={togglePlay}
         onLoadedMetadata={handleLoadedMetadata}
